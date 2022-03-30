@@ -1,0 +1,147 @@
+version: "2.2"
+
+services:
+
+  setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    user: "0"
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - ./elastic/instances.yml:/usr/share/elasticsearch/config/instances.yml
+      - ./elastic/setup.sh:/usr/share/elasticsearch/config/setup.sh
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+    command: >
+      bash -c '
+        chmod +x "/usr/share/elasticsearch/config/setup.sh";
+        bash /usr/share/elasticsearch/config/setup.sh
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  # Create es01 service as anchor es-master
+  es01: &es-master
+    depends_on:
+      setup:
+        condition: service_healthy
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1    
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata01:/usr/share/elasticsearch/data
+      - ./elastic/elasticsearch/es01.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - ${ES01_PORT}:9200
+    environment:
+      - CLUSTER_NAME=${CLUSTER_NAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - LICENSE=${LICENSE}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  # Create es02 service as anchor es-node
+  es02: &es-node
+    # Anchor from es-master anchor
+    <<: *es-master
+    # Overide yaml keys
+    depends_on:
+      - es01
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata02:/usr/share/elasticsearch/data
+      - ./elastic/elasticsearch/es02.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports: []
+
+  es03:
+    # Anchor from es-node anchor
+    <<: *es-node
+    # Overide yaml keys
+    depends_on:
+      - es02
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - esdata03:/usr/share/elasticsearch/data
+      - ./elastic/elasticsearch/es03.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+
+  kibana:
+    depends_on:
+      es01:
+        condition: service_healthy
+      es02:
+        condition: service_healthy
+      es03:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+      - kibanadata:/usr/share/kibana/data
+      - ./elastic/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    ports:
+      - ${KIBANA_PORT}:5601
+    environment:
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  filebeat:
+    depends_on:
+      - es01
+    image: docker.elastic.co/beats/filebeat:${STACK_VERSION}
+    user: root
+    volumes:
+      - certs:/usr/share/filebeat/config/certs
+      - ./elastic/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+    environment:
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    command: ["--strict.perms=false"]
+
+  logstash:
+    image: "docker.elastic.co/logstash/logstash:${STACK_VERSION}"
+    depends_on:
+      es01:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/logstash/config/certs
+      - ./elastic/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    environment:
+      - MONITORING_USERNAME=logstash_system
+      - MONITORING_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}
+      - ELASTICSEARCH_USERNAME=logstash_internal
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_INTERNAL_PASSWORD}
+
+volumes:
+  certs:
+    driver: local
+  esdata01:
+    driver: local
+  esdata02:
+    driver: local
+  esdata03:
+    driver: local
+  kibanadata:
+    driver: local

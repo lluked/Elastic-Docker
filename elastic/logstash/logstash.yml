@@ -1,0 +1,7 @@
+node.name: "Logstash"
+http.host: "0.0.0.0"
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.hosts: [ "https://es01:9200" ]
+xpack.monitoring.elasticsearch.username: ${MONITORING_USERNAME}
+xpack.monitoring.elasticsearch.password: ${MONITORING_PASSWORD}
+xpack.monitoring.elasticsearch.ssl.certificate_authority: "config/certs/ca/ca.crt"

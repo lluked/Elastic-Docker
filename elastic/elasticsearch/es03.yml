@@ -1,0 +1,25 @@
+node.name: es03
+network.host: 0.0.0.0
+cluster:
+  name: ${CLUSTER_NAME}
+  initial_master_nodes: es01,es02,es03
+discovery.seed_hosts: es01,es02
+bootstrap.memory_lock: true
+xpack:
+  security:
+    enabled: true
+    http:
+      ssl:
+        enabled: true
+        key: certs/es03/es03.key
+        certificate: certs/es03/es03.crt
+        certificate_authorities: certs/ca/ca.crt
+        verification_mode: certificate
+    transport:
+      ssl:
+        enabled: true
+        key: certs/es03/es03.key
+        certificate: certs/es03/es03.crt
+        certificate_authorities: certs/ca/ca.crt
+        verification_mode: certificate
+  license.self_generated.type: ${LICENSE}

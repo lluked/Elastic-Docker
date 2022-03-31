@@ -128,6 +128,8 @@ services:
     volumes:
       - certs:/usr/share/logstash/config/certs
       - ./elastic/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./elastic/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./elastic/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
     environment:
       - MONITORING_USERNAME=logstash_system
       - MONITORING_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}

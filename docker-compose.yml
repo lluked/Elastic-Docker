@@ -7,8 +7,7 @@ services:
     user: "0"
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
-      - ./elastic/instances.yml:/usr/share/elasticsearch/config/instances.yml
-      - ./elastic/setup.sh:/usr/share/elasticsearch/config/setup.sh
+      - ./elastic/setup:/usr/share/elasticsearch/config/setup
     environment:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - KIBANA_SYSTEM_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
@@ -18,8 +17,8 @@ services:
       - FILEBEAT_INTERNAL_PASSWORD=${FILEBEAT_INTERNAL_PASSWORD}
     command: >
       bash -c '
-        chmod +x "/usr/share/elasticsearch/config/setup.sh";
-        bash /usr/share/elasticsearch/config/setup.sh
+        chmod +x "/usr/share/elasticsearch/config/setup/setup.sh";
+        bash /usr/share/elasticsearch/config/setup/setup.sh
       '
     healthcheck:
       test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
@@ -37,9 +36,9 @@ services:
     ulimits:
       memlock:
         soft: -1
-        hard: -1    
+        hard: -1
     volumes:
-      - certs:/usr/share/elasticsearch/config/certs
+      - certs:/usr/share/elasticsearch/config/certs:ro
       - esdata01:/usr/share/elasticsearch/data
       - ./elastic/elasticsearch/es01.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     ports:
@@ -66,7 +65,7 @@ services:
     depends_on:
       - es01
     volumes:
-      - certs:/usr/share/elasticsearch/config/certs
+      - certs:/usr/share/elasticsearch/config/certs:ro
       - esdata02:/usr/share/elasticsearch/data
       - ./elastic/elasticsearch/es02.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     ports: []
@@ -78,7 +77,7 @@ services:
     depends_on:
       - es02
     volumes:
-      - certs:/usr/share/elasticsearch/config/certs
+      - certs:/usr/share/elasticsearch/config/certs:ro
       - esdata03:/usr/share/elasticsearch/data
       - ./elastic/elasticsearch/es03.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
 
@@ -92,7 +91,7 @@ services:
         condition: service_healthy
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
     volumes:
-      - certs:/usr/share/kibana/config/certs
+      - certs:/usr/share/kibana/config/certs:ro
       - kibanadata:/usr/share/kibana/data
       - ./elastic/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
@@ -117,7 +116,7 @@ services:
       es01:
         condition: service_healthy
     volumes:
-      - certs:/usr/share/logstash/config/certs
+      - certs:/usr/share/logstash/config/certs:ro
       - ./elastic/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - ./elastic/logstash/pipeline:/usr/share/logstash/pipeline:ro
       - ./elastic/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
@@ -129,11 +128,12 @@ services:
 
   filebeat:
     depends_on:
-      - es01
+      es01:
+        condition: service_healthy
     image: docker.elastic.co/beats/filebeat:${STACK_VERSION}
     user: root
     volumes:
-      - certs:/usr/share/filebeat/config/certs
+      - certs:/usr/share/filebeat/config/certs:ro
       - ./elastic/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
     environment:
       - MONITORING_USERNAME=beats_system

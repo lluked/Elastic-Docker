@@ -11,7 +11,11 @@ services:
       - ./elastic/setup.sh:/usr/share/elasticsearch/config/setup.sh
     environment:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+      - KIBANA_SYSTEM_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
+      - LOGSTASH_SYSTEM_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}
+      - LOGSTASH_INTERNAL_PASSWORD=${LOGSTASH_INTERNAL_PASSWORD}
+      - BEATS_SYSTEM_PASSWORD=${BEATS_SYSTEM_PASSWORD}
+      - FILEBEAT_INTERNAL_PASSWORD=${FILEBEAT_INTERNAL_PASSWORD}
     command: >
       bash -c '
         chmod +x "/usr/share/elasticsearch/config/setup.sh";
@@ -95,7 +99,7 @@ services:
       - ${KIBANA_PORT}:5601
     environment:
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_SYSTEM_PASSWORD}
     mem_limit: ${MEM_LIMIT}
     healthcheck:
       test:
@@ -106,19 +110,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
-
-  filebeat:
-    depends_on:
-      - es01
-    image: docker.elastic.co/beats/filebeat:${STACK_VERSION}
-    user: root
-    volumes:
-      - certs:/usr/share/filebeat/config/certs
-      - ./elastic/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
-    environment:
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
-    command: ["--strict.perms=false"]
 
   logstash:
     image: "docker.elastic.co/logstash/logstash:${STACK_VERSION}"
@@ -135,6 +126,21 @@ services:
       - MONITORING_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}
       - ELASTICSEARCH_USERNAME=logstash_internal
       - ELASTICSEARCH_PASSWORD=${LOGSTASH_INTERNAL_PASSWORD}
+
+  filebeat:
+    depends_on:
+      - es01
+    image: docker.elastic.co/beats/filebeat:${STACK_VERSION}
+    user: root
+    volumes:
+      - certs:/usr/share/filebeat/config/certs
+      - ./elastic/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+    environment:
+      - MONITORING_USERNAME=beats_system
+      - MONITORING_PASSWORD=${BEATS_SYSTEM_PASSWORD}
+      - ELASTICSEARCH_USERNAME=filebeat_internal
+      - ELASTICSEARCH_PASSWORD=${FILEBEAT_INTERNAL_PASSWORD}
+    command: ["--strict.perms=false"]
 
 volumes:
   certs:

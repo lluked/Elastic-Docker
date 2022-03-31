@@ -120,6 +120,8 @@ services:
       - ./elastic/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - ./elastic/logstash/pipeline:/usr/share/logstash/pipeline:ro
       - ./elastic/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+    ports:
+      - 5044:5044
     environment:
       - MONITORING_USERNAME=logstash_system
       - MONITORING_PASSWORD=${LOGSTASH_SYSTEM_PASSWORD}

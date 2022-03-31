@@ -23,3 +23,4 @@ xpack:
         certificate_authorities: certs/ca/ca.crt
         verification_mode: certificate
   license.self_generated.type: ${LICENSE}
+  monitoring.collection.enabled: true
